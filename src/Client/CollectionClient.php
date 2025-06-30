@@ -24,7 +24,7 @@ class CollectionClient
         return $this->client->collections[$collectionName]->documents->search($query->getParameters());
     }
 
-    public function multiSearch(array $searchRequests, ?TypesenseQuery $commonSearchParams = null)
+    public function multiSearch(array $searchRequests, ?TypesenseQuery $commonSearchParams = null, ?bool $union = false)
     {
         if (!$this->client->isOperationnal()) {
             return null;
@@ -41,10 +41,16 @@ class CollectionClient
             $searches[] = $sr->getParameters();
         }
 
+        $body = [
+            'searches' => $searches,
+        ];
+
+        if ($union) {
+            $body['union'] = true;
+        }
+
         return $this->client->multiSearch->perform(
-            [
-                'searches' => $searches,
-            ],
+            $body,
             $commonSearchParams ? $commonSearchParams->getParameters() : []
         );
     }
