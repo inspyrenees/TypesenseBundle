@@ -52,7 +52,7 @@ class CollectionClient
         }
     }
 
-    public function multiSearch(array $searchRequests, ?TypesenseQuery $commonSearchParams = null)
+    public function multiSearch(array $searchRequests, ?TypesenseQuery $commonSearchParams = null, ?bool $union = false)
     {
         if (!$this->client->isOperationnal()) {
             return null;
@@ -73,8 +73,16 @@ class CollectionClient
         $error = null;
 
         try {
+            $body = [
+                'searches' => $searches,
+            ];
+
+            if ($union) {
+                $body['union'] = true;
+            }
+
             $result = $this->client->multiSearch->perform(
-                ['searches' => $searches],
+                $body,
                 $commonSearchParams ? $commonSearchParams->getParameters() : []
             );
 
