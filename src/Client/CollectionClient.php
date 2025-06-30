@@ -119,7 +119,7 @@ class CollectionClient
             'symbols_to_index'      => $symbolsToIndex,
             'enable_nested_fields'  => $enableNestedFields,
         ];
-        
+
         if ($embed) {
             $options['embed'] = $embed;
         }
