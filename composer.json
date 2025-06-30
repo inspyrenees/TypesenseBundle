@@ -1,13 +1,16 @@
 {
-    "name": "acseo/typesense-bundle",
+    "name": "inspyrenees/typesense-bundle",
     "description": "This bundle provides integration with Typesense in Symfony",
     "type": "symfony-bundle",
-    "version": "0.9.0",
     "license": "MIT",
     "authors": [
         {
             "name": "Nicolas Potier",
             "email": "nicolas.potier@acseo.fr"
+        },
+        {
+            "name": "Simon Minet",
+            "email": "simon@inspyrenees.fr"
         }
     ],
     "require": {
