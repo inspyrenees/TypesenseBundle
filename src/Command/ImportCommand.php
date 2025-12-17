@@ -8,45 +8,39 @@ use ACSEO\TypesenseBundle\Manager\CollectionManager;
 use ACSEO\TypesenseBundle\Manager\DocumentManager;
 use ACSEO\TypesenseBundle\Transformer\DoctrineToTypesenseTransformer;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+#[AsCommand(
+    name: 'typesense:import',
+    description: 'Import collections from Database'
+)]
 class ImportCommand extends Command
 {
-    protected static $defaultName = 'typesense:import';
-
-    private $em;
-    private $collectionManager;
-    private $documentManager;
-    private $transformer;
     private const ACTIONS = [
         'create',
         'upsert',
         'update',
     ];
-    private $isError = false;
+
+    private bool $isError = false;
 
     public function __construct(
-        EntityManagerInterface $em,
-        CollectionManager $collectionManager,
-        DocumentManager $documentManager,
-        DoctrineToTypesenseTransformer $transformer
+        private readonly EntityManagerInterface $em,
+        private readonly CollectionManager $collectionManager,
+        private readonly DocumentManager $documentManager,
+        private readonly DoctrineToTypesenseTransformer $transformer
     ) {
         parent::__construct();
-        $this->em                = $em;
-        $this->collectionManager = $collectionManager;
-        $this->documentManager   = $documentManager;
-        $this->transformer       = $transformer;
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
-            ->setName(self::$defaultName)
-            ->setDescription('Import collections from Database')
             ->addOption('action', null, InputOption::VALUE_OPTIONAL, 'Action modes for typesense import ("create", "upsert" or "update")', 'upsert')
             ->addOption('indexes', null, InputOption::VALUE_OPTIONAL, 'The index(es) to repopulate. Comma separated values')
             ->addOption('first-page', null, InputOption::VALUE_REQUIRED, 'The pager\'s page to start population from. Including the given page.', 1)
@@ -62,7 +56,7 @@ class ImportCommand extends Command
         if (!in_array($input->getOption('action'), self::ACTIONS, true)) {
             $io->error('Action option only takes the values : "create", "upsert" or "update"');
 
-            return 1;
+            return Command::FAILURE;
         }
 
         $action = $input->getOption('action');
@@ -89,7 +83,7 @@ class ImportCommand extends Command
             if (!isset($collectionDefinitions[$index])) {
                 $io->error('Unable to find index "'.$index.'" in collection definition (available : '.implode(', ', array_keys($collectionDefinitions)).')');
 
-                return 2;
+                return Command::INVALID;
             }
         }
 
@@ -100,7 +94,7 @@ class ImportCommand extends Command
                 $this->isError = true;
                 $io->error($e->getMessage());
 
-                return 2;
+                return Command::FAILURE;
             }
         }
 
@@ -114,10 +108,10 @@ class ImportCommand extends Command
             ));
         }
 
-        return 0;
+        return Command::SUCCESS;
     }
 
-    private function populateIndex(InputInterface $input, OutputInterface $output, string $index)
+    private function populateIndex(InputInterface $input, OutputInterface $output, string $index): int
     {
         $populated = 0;
         $io        = new SymfonyStyle($input, $output);
@@ -135,7 +129,7 @@ class ImportCommand extends Command
         $nbEntities = (int) $this->em->createQuery('select COUNT(u.id) from '.$class.' u')->getSingleScalarResult();
 
         $nbPages = ceil($nbEntities / $maxPerPage);
-        
+
         if ($input->getOption('last-page')) {
             $lastPage = $input->getOption('last-page');
             if ($lastPage > $nbPages) {

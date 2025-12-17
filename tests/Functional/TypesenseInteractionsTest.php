@@ -22,7 +22,7 @@ use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager;
 use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\PropertyAccess\PropertyAccess;
@@ -42,12 +42,12 @@ class TypesenseInteractionsTest extends KernelTestCase
         'La chute du monstre',
     ];
 
-    private $cptToIterableCall;
-    
-    public function testCreateCommand()
+    private int $cptToIterableCall;
+
+    public function testCreateCommand(): void
     {
         $commandTester = $this->createCommandTester();
-        $commandTester->execute(['-vvv']);
+        $commandTester->execute([], ['verbosity' => OutputInterface::VERBOSITY_DEBUG]);
 
         // the output of the command in the console
         $output = $commandTester->getDisplay();
@@ -59,7 +59,7 @@ class TypesenseInteractionsTest extends KernelTestCase
      * @depends testCreateCommand
      * @dataProvider importCommandProvider
      */
-    public function testImportCommand($nbBooks, $maxPerPage = null, $firstPage = null, $lastPage = null, $expectedCount = null)
+    public function testImportCommand(int $nbBooks, ?int $maxPerPage = null, ?int $firstPage = null, ?int $lastPage = null, ?int $expectedCount = null): void
     {
         $commandTester = $this->importCommandTester([
             'nbBooks' => $nbBooks,
@@ -67,35 +67,35 @@ class TypesenseInteractionsTest extends KernelTestCase
             'firstPage' => $firstPage,
             'lastPage' => $lastPage
         ]);
-        
-        $commandOptions = ['-vvv'];
 
-        if ($maxPerPage != null) {
+        $commandOptions = [];
+
+        if ($maxPerPage !== null) {
             $commandOptions['--max-per-page'] = $maxPerPage;
         }
-        if ($firstPage != null) {
+        if ($firstPage !== null) {
             $commandOptions['--first-page'] = $firstPage;
-        } 
-        if ($lastPage != null) {
+        }
+        if ($lastPage !== null) {
             $commandOptions['--last-page'] = $lastPage;
-        } 
+        }
 
-        $commandTester->execute($commandOptions);
+        $commandTester->execute($commandOptions, ['verbosity' => OutputInterface::VERBOSITY_DEBUG]);
 
         // the output of the command in the console
         $output = $commandTester->getDisplay();
-        
+
         self::assertStringContainsString(
-            sprintf('[books] ACSEO\TypesenseBundle\Tests\Functional\Entity\Book %s entries to insert', $nbBooks), 
+            sprintf('[books] ACSEO\TypesenseBundle\Tests\Functional\Entity\Book %s entries to insert', $nbBooks),
             $output
         );
         self::assertStringContainsString(
-            sprintf('[OK] %s elements populated', $expectedCount ?? $nbBooks), 
+            sprintf('[OK] %s elements populated', $expectedCount ?? $nbBooks),
             $output
         );
     }
 
-    public function importCommandProvider()
+    public static function importCommandProvider(): array
     {
         return [
             "insert 10 books one by one" => [
@@ -117,7 +117,7 @@ class TypesenseInteractionsTest extends KernelTestCase
      * @depends testImportCommand
      * @dataProvider importCommandProvider
      */
-    public function testSearchByAuthor($nbBooks)
+    public function testSearchByAuthor(int $nbBooks): void
     {
         $typeSenseClient       = new TypesenseClient($_ENV['TYPESENSE_URL'], $_ENV['TYPESENSE_KEY']);
         $collectionClient      = new CollectionClient($typeSenseClient);
@@ -131,7 +131,7 @@ class TypesenseInteractionsTest extends KernelTestCase
 
         $query->maxHits($nbBooks < 250 ? $nbBooks : 250);
         $query->perPage($nbBooks < 250 ? $nbBooks : 250);
-        
+
         $results    = $bookFinder->rawQuery($query)->getResults();
 
         self::assertCount(($nbBooks < 250 ? $nbBooks : 250), $results, "result doesn't contains ".$nbBooks.' elements');
@@ -144,7 +144,7 @@ class TypesenseInteractionsTest extends KernelTestCase
      * @depends testImportCommand
      * @dataProvider importCommandProvider
      */
-    public function testSearchByTitle($nbBooks)
+    public function testSearchByTitle(int $nbBooks): void
     {
         $typeSenseClient  = new TypesenseClient($_ENV['TYPESENSE_URL'], $_ENV['TYPESENSE_KEY']);
         $collectionClient = new CollectionClient($typeSenseClient);
@@ -167,7 +167,7 @@ class TypesenseInteractionsTest extends KernelTestCase
     /**
      * @depends testImportCommand
      */
-    public function testCreateAndDelete()
+    public function testCreateAndDelete(): void
     {
         $book = new Book(1000, 'ACSEO', new Author('Nicolas Potier', 'France'), new \DateTime());
 
@@ -236,10 +236,6 @@ class TypesenseInteractionsTest extends KernelTestCase
 
     private function createCommandTester(): CommandTester
     {
-        $application = new Application();
-
-        $application->setAutoExit(false);
-
         $book = $this->getMockBuilder('\App\Entity\Book')->getMock();
         // Author is required
         $author = $this->getMockBuilder('\App\Entity\Author')->getMock();
@@ -254,17 +250,11 @@ class TypesenseInteractionsTest extends KernelTestCase
 
         $command = new CreateCommand($collectionManager);
 
-        $application->add($command);
-
-        return new CommandTester($application->find('typesense:create'));
+        return new CommandTester($command);
     }
 
-    private function importCommandTester($options): CommandTester
+    private function importCommandTester(array $options): CommandTester
     {
-        $application = new Application();
-
-        $application->setAutoExit(false);
-
         // Prepare all mocked objects required to run the command
         $books                 = $this->getMockedBooks($options);
         $collectionDefinitions = $this->getCollectionDefinitions(Book::class);
@@ -279,12 +269,10 @@ class TypesenseInteractionsTest extends KernelTestCase
 
         $command = new ImportCommand($em, $collectionManager, $documentManager, $transformer);
 
-        $application->add($command);
-
-        return new CommandTester($application->find('typesense:import'));
+        return new CommandTester($command);
     }
 
-    private function getCollectionDefinitions($entityClass)
+    private function getCollectionDefinitions(string $entityClass): array
     {
         return [
             'books' => [
@@ -349,7 +337,7 @@ class TypesenseInteractionsTest extends KernelTestCase
         ];
     }
 
-    private function getMockedBooks($options)
+    private function getMockedBooks(array $options): array
     {
         $author = new Author('Nicolas Potier', 'France');
         $books  = [];
@@ -362,7 +350,7 @@ class TypesenseInteractionsTest extends KernelTestCase
         return $books;
     }
 
-    private function getMockedEntityManager($books, array $options = [])
+    private function getMockedEntityManager(array $books, array $options = []): EntityManager
     {
         $em = $this->createMock(EntityManager::class);
 
@@ -383,11 +371,11 @@ class TypesenseInteractionsTest extends KernelTestCase
         // Dirty Method to count number of call to the method toIterable in order to return
         // the good results
         $this->cptToIterableCall = isset($options['firstPage']) ? ($options['firstPage']-1) : 0;
-        
+
         $maxPerPage = $options['maxPerPage'] ?? 100;
 
         $query->method('toIterable')->will($this->returnCallback(function() use ($books, $maxPerPage){
-            $result =  array_slice($books, 
+            $result =  array_slice($books,
                 $this->cptToIterableCall * $maxPerPage,
                 $maxPerPage
             );
@@ -401,10 +389,8 @@ class TypesenseInteractionsTest extends KernelTestCase
 
     /**
      * mock a lifeCycleEventArgs Object.
-     *
-     * @param $eventType
      */
-    private function getmockedEventCreate($book): \PHPUnit\Framework\MockObject\MockObject
+    private function getmockedEventCreate(Book $book): \PHPUnit\Framework\MockObject\MockObject
     {
         $lifeCycleEvent = $this->createMock(LifecycleEventArgs::class);
         $lifeCycleEvent->method('getObject')->willReturn($book);

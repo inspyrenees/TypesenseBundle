@@ -8,31 +8,25 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
 class ACSEOTypesenseExtension extends Extension
 {
     /**
      * An array of collections as configured by the extension.
-     *
-     * @var array
      */
-    private $collectionsConfig = [];
+    private array $collectionsConfig = [];
 
     /**
      * An array of finder as configured by the extension.
-     *
-     * @var array
      */
-    private $findersConfig = [];
+    private array $findersConfig = [];
 
     /**
      * An array of parameters to use as configured by the extension.
-     *
-     * @var array
      */
-    private $parameters = [];
+    private array $parameters = [];
 
     public function load(array $configs, ContainerBuilder $container): void
     {
@@ -45,7 +39,7 @@ class ACSEOTypesenseExtension extends Extension
             return;
         }
 
-        $loader = new XMlFileLoader(
+        $loader = new PhpFileLoader(
             $container,
             new FileLocator(__DIR__.'/../Resources/config')
         );
@@ -72,10 +66,8 @@ class ACSEOTypesenseExtension extends Extension
 
     /**
      * Loads the configured clients.
-     *
-     * @param ContainerBuilder $container A ContainerBuilder instance
      */
-    private function loadClient($config, ContainerBuilder $container): void
+    private function loadClient(array $config, ContainerBuilder $container): void
     {
         $clientId = ('typesense.client');
 
@@ -89,9 +81,6 @@ class ACSEOTypesenseExtension extends Extension
 
     /**
      * Loads the configured collection.
-     *
-     * @param array            $collections An array of collection configurations
-     * @param ContainerBuilder $container   A ContainerBuilder instance
      *
      * @throws \InvalidArgumentException
      */

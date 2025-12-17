@@ -20,7 +20,7 @@ use Doctrine\ORM\Query;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\PropertyAccess\PropertyAccess;
@@ -40,13 +40,10 @@ class AllowNullConnexionTest extends KernelTestCase
         'La chute du monstre',
     ];
 
-    public function testCreateCommand()
+    public function testCreateCommand(): void
     {
-        $commandTester = $this->createCommandTester();
-        $commandTester->execute(['-vvv']);
+        $output = $this->createCommandTester();
 
-        // the output of the command in the console
-        $output = $commandTester->getDisplay();
         self::assertStringContainsString('Deleting books', $output);
         self::assertStringContainsString('Creating books', $output);
     }
@@ -54,7 +51,7 @@ class AllowNullConnexionTest extends KernelTestCase
     /**
      * @depends testCreateCommand
      */
-    public function testImportCommand()
+    public function testImportCommand(): void
     {
         $commandTester = $this->importCommandTester();
         $commandTester->execute([]);
@@ -68,7 +65,7 @@ class AllowNullConnexionTest extends KernelTestCase
     /**
      * @depends testImportCommand
      */
-    public function testSearchByAuthor()
+    public function testSearchByAuthor(): void
     {
         $typeSenseClient       = new TypesenseClient('null', 'null');
         $collectionClient      = new CollectionClient($typeSenseClient);
@@ -82,12 +79,8 @@ class AllowNullConnexionTest extends KernelTestCase
         self::assertNull($results);
     }
 
-    private function createCommandTester(): CommandTester
+    private function createCommandTester(): string
     {
-        $application = new Application();
-
-        $application->setAutoExit(false);
-
         $book = $this->getMockBuilder('\App\Entity\Book')->getMock();
         // Author is required
         $author = $this->getMockBuilder('\App\Entity\Author')->getMock();
@@ -101,18 +94,15 @@ class AllowNullConnexionTest extends KernelTestCase
         $collectionManager     = new CollectionManager($collectionClient, $transformer, $collectionDefinitions);
 
         $command = new CreateCommand($collectionManager);
+        $commandTester = new CommandTester($command);
+        $commandTester->execute([], ['verbosity' => OutputInterface::VERBOSITY_DEBUG]);
 
-        $application->add($command);
-
-        return new CommandTester($application->find('typesense:create'));
+        // the output of the command in the console
+        return $commandTester->getDisplay();
     }
 
     private function importCommandTester(): CommandTester
     {
-        $application = new Application();
-
-        $application->setAutoExit(false);
-
         // Prepare all mocked objects required to run the command
         $books                 = $this->getMockedBooks();
         $collectionDefinitions = $this->getCollectionDefinitions(Book::class);
@@ -127,12 +117,10 @@ class AllowNullConnexionTest extends KernelTestCase
 
         $command = new ImportCommand($em, $collectionManager, $documentManager, $transformer);
 
-        $application->add($command);
-
-        return new CommandTester($application->find('typesense:import'));
+        return new CommandTester($command);
     }
 
-    private function getCollectionDefinitions($entityClass)
+    private function getCollectionDefinitions(string $entityClass): array
     {
         return [
             'books' => [
@@ -177,7 +165,7 @@ class AllowNullConnexionTest extends KernelTestCase
         ];
     }
 
-    private function getMockedBooks()
+    private function getMockedBooks(): array
     {
         $author = new Author('Nicolas Potier', 'France');
         $books  = [];
@@ -189,7 +177,7 @@ class AllowNullConnexionTest extends KernelTestCase
         return $books;
     }
 
-    private function getMockedEntityManager($books)
+    private function getMockedEntityManager(array $books): EntityManager
     {
         $em = $this->createMock(EntityManager::class);
 
